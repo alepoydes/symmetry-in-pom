@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+"""Copy the explicit public file set into a new directory; never publish it."""
+import argparse
+from pathlib import Path
+import shutil
+
+root = Path(__file__).resolve().parents[1]
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("destination", type=Path)
+args = parser.parse_args()
+destination = args.destination.resolve()
+if destination.exists():
+    parser.error(f"destination already exists: {destination}")
+names = [line.strip() for line in (root / "public-files.txt").read_text().splitlines() if line.strip()]
+if len(names) != len(set(names)):
+    parser.error("duplicate entry in public-files.txt")
+for name in names:
+    path = Path(name)
+    source = root / path
+    if path.is_absolute() or ".." in path.parts or source.is_symlink() or not source.is_file():
+        parser.error(f"invalid public file: {name}")
+    if path.suffix in {".tex", ".bib"} or any(part.startswith(".") for part in path.parts):
+        parser.error(f"internal file in public list: {name}")
+for name in names:
+    target = destination / name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(root / name, target)
+# The computational entry points are identical in both repositories.
+shutil.copy2(root / "reproduce.mk", destination / "Makefile")
+shutil.copy2(root / "REPRODUCTION.md", destination / "README.md")
+(destination / ".gitignore").write_text(
+    ".venv/\n__pycache__/\n*.pyc\n.pytest_cache/\nbuild/\nfigs/\n*.zip\n"
+    "data/*\n!data/README.md\ndata_src/*\n!data_src/*.toml\n"
+    "!data_src/*.sha256\n!data_src/README.md\n"
+)
+print(f"Copied {len(names)} listed files to {destination}; no Git history or manuscript sources.")

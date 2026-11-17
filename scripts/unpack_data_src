@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+force=false
+if [[ ${1:-} == "--force" ]]; then
+  force=true
+  shift
+fi
+if [[ $# -ne 1 ]]; then
+  printf 'usage: %s [--force] SOURCE_DATA.zip\n' "$0" >&2
+  exit 2
+fi
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+archive=$1
+if [[ ! -f "$archive" ]]; then
+  printf 'source-data archive does not exist: %s\n' "$archive" >&2
+  exit 2
+fi
+if ! command -v unzip >/dev/null 2>&1; then
+  printf 'unpack_data_src: required command not found: unzip\n' >&2
+  exit 127
+fi
+invalid_entry=$(
+  unzip -Z1 "$archive" |
+    awk 'index($0, "data_src/") != 1 && $0 != "LICENSE" { print; exit }'
+)
+if [[ -n "$invalid_entry" ]]; then
+  printf 'archive contains an entry outside data_src/: %s\n' "$invalid_entry" >&2
+  exit 2
+fi
+unzip -tq "$archive" >/dev/null
+
+existing_payload=""
+if [[ -d "$root/data_src/holography" || -d "$root/data_src/direct_pom" ]]; then
+  existing_payload=$(
+    find "$root/data_src" -type f \
+      \( -path "$root/data_src/holography/*" -o -path "$root/data_src/direct_pom/*" \) -print -quit
+  )
+fi
+if [[ -n "$existing_payload" && "$force" == false ]]; then
+  printf 'data_src/ is not empty; rerun with --force to replace source files\n' >&2
+  exit 2
+fi
+if [[ "$force" == true ]]; then
+  rm -rf \
+    "$root/data_src/holography" \
+    "$root/data_src/direct_pom"
+fi
+unzip -oq "$archive" -d "$root"
+"$root/scripts/check_data_src"
+printf 'Minimal source data unpacked under %s/data_src\n' "$root"

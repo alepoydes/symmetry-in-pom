@@ -1,0 +1,39 @@
+cff-version: 1.2.0
+message: "Please cite this code and data when reusing the calculations or figures."
+type: software
+title: "symmetry-in-pom: Emergent Fourfold Symmetry in Polarization Images"
+version: 0.1.0
+doi: "10.5281/zenodo.24323744"
+date-released: 2026-11-17
+url: "https://doi.org/10.5281/zenodo.24323744"
+license: MIT
+repository-code: "https://github.com/alepoydes/symmetry-in-pom"
+authors:
+  - family-names: Lobanov
+    given-names: Igor S.
+    orcid: "https://orcid.org/0000-0001-8789-3267"
+  - family-names: Reztsov
+    given-names: Tikhon V.
+    orcid: "https://orcid.org/0000-0003-2025-0579"
+  - family-names: Shalev
+    given-names: Artem N.
+    orcid: "https://orcid.org/0000-0002-4566-8093"
+  - family-names: Orlova
+    given-names: Tetiana
+    orcid: "https://orcid.org/0000-0002-1594-291X"
+  - family-names: Aksenova
+    given-names: Elena V.
+    orcid: "https://orcid.org/0000-0002-4324-1491"
+  - family-names: Uzdin
+    given-names: Valery M.
+    orcid: "https://orcid.org/0000-0002-9505-0996"
+  - family-names: Petrov
+    given-names: Nikolay V.
+    orcid: "https://orcid.org/0000-0002-8866-7592"
+  - family-names: Chernykh
+    given-names: Aleksey V.
+    orcid: "https://orcid.org/0000-0003-1297-3267"
+abstract: >-
+  Calculation, analysis, and figure code with accompanying data for
+  Emergent Fourfold Symmetry in Polarization Images: Local Origin and
+  Diffractive Breakdown.

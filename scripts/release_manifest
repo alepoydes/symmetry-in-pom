@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+"""Bind the public code snapshot to its two data archives; never contact Git."""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import sys
+import tomllib
+import zipfile
+
+from artifact_files import check_archive_members
+
+ROOT = Path(__file__).resolve().parents[1]
+ARCHIVES = ("fourfold-source-data.zip", "fourfold-derived-data.zip")
+MANIFEST = "release-manifest.json"
+SCHEMA = "symmetry-in-pom.release.v1"
+
+
+def sha256(path):
+    with path.open("rb") as stream:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
+
+
+def code_identity():
+    names = (ROOT / "public-files.txt").read_text().splitlines()
+    if not names or len(names) != len(set(names)):
+        raise ValueError("empty or duplicate public file list")
+    files = {}
+    for name in sorted(names):
+        path = Path(name)
+        source = ROOT / path
+        if path.is_absolute() or ".." in path.parts or source.is_symlink():
+            raise ValueError(f"invalid public file: {name}")
+        files[name] = sha256(source)
+    listing = "".join(f"{digest}  {name}\n" for name, digest in files.items())
+    return {"sha256": hashlib.sha256(listing.encode()).hexdigest(), "files": files}
+
+
+def archive_identity(directory):
+    return {
+        name: {"sha256": sha256(directory / name), "bytes": (directory / name).stat().st_size}
+        for name in ARCHIVES
+    }
+
+
+def check_archived_metadata(directory, files):
+    # The archives also carry tracked descriptions and licenses. Unpacking must
+    # not silently replace them with metadata from a different code snapshot.
+    for name in ARCHIVES:
+        with zipfile.ZipFile(directory / name) as archive:
+            check_archive_members(archive, name, ROOT)
+            if "LICENSE" not in archive.namelist():
+                raise ValueError(f"{name}: missing LICENSE")
+            for entry in archive.infolist():
+                if entry.filename in files:
+                    digest = hashlib.sha256(archive.read(entry)).hexdigest()
+                    if digest != files[entry.filename]:
+                        raise ValueError(f"{name}: stale metadata {entry.filename}")
+
+
+def create(directory):
+    for name in (MANIFEST, "SHA256SUMS"):
+        if (directory / name).exists():
+            raise ValueError(f"already exists: {directory / name}; use pack_release to replace the set")
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+    code = code_identity()
+    check_archived_metadata(directory, code["files"])
+    archives = archive_identity(directory)
+    document = {
+        "schema": SCHEMA,
+        "repository": project["urls"]["Repository"],
+        "version": project["version"],
+        "code": code,
+        "archives": archives,
+    }
+    (directory / MANIFEST).write_text(json.dumps(document, indent=2) + "\n")
+    checksums = {name: record["sha256"] for name, record in archives.items()}
+    checksums[MANIFEST] = sha256(directory / MANIFEST)
+    (directory / "SHA256SUMS").write_text(
+        "".join(f"{digest}  {name}\n" for name, digest in checksums.items())
+    )
+    print(f"Release {project['version']}: code SHA-256 {code['sha256']}")
+
+
+def verify(directory):
+    checksums = {}
+    for line in (directory / "SHA256SUMS").read_text().splitlines():
+        digest, name = line.split("  ", 1)
+        if name in checksums:
+            raise ValueError(f"duplicate checksum: {name}")
+        checksums[name] = digest
+    if set(checksums) != {*ARCHIVES, MANIFEST}:
+        raise ValueError("SHA256SUMS must list both data archives and release-manifest.json")
+    for name, digest in checksums.items():
+        if sha256(directory / name) != digest:
+            raise ValueError(f"SHA-256 mismatch: {name}")
+    document = json.loads((directory / MANIFEST).read_text())
+    if document["schema"] != SCHEMA:
+        raise ValueError("unsupported release manifest schema")
+    code = code_identity()
+    if document["code"] != code:
+        expected = document["code"]["files"]
+        changed = sorted(name for name in expected.keys() | code["files"].keys()
+                         if expected.get(name) != code["files"].get(name))
+        raise ValueError("code does not match this release: " + ", ".join(changed[:5]))
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+    if (document["version"] != project["version"]
+            or document["repository"] != project["urls"]["Repository"]):
+        raise ValueError("release version or repository does not match pyproject.toml")
+    # Reuse the checksums already verified above rather than reread large files.
+    actual = {name: {"sha256": checksums[name], "bytes": (directory / name).stat().st_size}
+              for name in ARCHIVES}
+    if document["archives"] != actual:
+        raise ValueError("archive records do not match the release manifest")
+    check_archived_metadata(directory, code["files"])
+    print(f"Verified release {document['version']}: code and both archives match.")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("action", choices=("create", "verify"))
+    parser.add_argument("directory", type=Path)
+    args = parser.parse_args()
+    try:
+        (create if args.action == "create" else verify)(args.directory.resolve())
+    except (OSError, ValueError, KeyError, TypeError, zipfile.BadZipFile) as exc:
+        print(f"release_manifest: {exc}", file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

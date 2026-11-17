@@ -1,0 +1,112 @@
+schema_version = "symmetry-in-pom.source-data.v1"
+
+[coordinates]
+# Pixel coordinates stored in the reconstructed Jones NPZ files follow the
+# project convention J[x, y, output, input].
+jones_spatial_axes = ["x", "y"]
+jones_matrix_axes = ["output", "input"]
+jones_mirror_x_applied = true
+jones_complex_conjugation_applied = true
+direct_pom_project_mirror_x_applied_in_processing = true
+
+[holography]
+acquisitions_per_wavelength = 9
+specimens = "nine distinct neighboring relaxed torons per wavelength, in the same cell under common conditions"
+sample_mosaics_averaged_per_acquisition = 10
+empty_field_mosaics_averaged_per_acquisition = 10
+exposure_time_ms = 2.0
+nominal_objective_magnification = 50.0
+nominal_objective_na = 0.55
+component_pixel_size_um = 0.1363
+component_pixel_size_status = "confirmed from calibration-slide measurements"
+component_pixel_size_uncertainty_um = 0.0063
+component_pixel_size_provenance = "calibration slide"
+calibration_slide_identification = "not recorded"
+component_shape_xy = [1224, 1024]
+jones_component_dtype = "complex64"
+jones_component_names = ["Jxx", "Jxy", "Jyx", "Jyy"]
+microscope = "polarization-sensitive off-axis Mach--Zehnder digital holographic microscope"
+camera = "FLIR BFS-U3-51S5P-C division-of-focal-plane polarization camera"
+camera_analyzer_block_deg = [[0, 135], [45, 90]]
+calibration = "empty-field division followed by residual wavefront and post-objective beamsplitter correction before export"
+
+[holography.wavelengths]
+directory_labels_nm = [450, 520, 660]
+calculation_wavelengths_nm = [453.0, 520.0, 662.0]
+
+[holography.primary_full_jones]
+nominal_wavelength_nm = 520.0
+horizontal_input_wavelength_nm = 518.2
+horizontal_input_wavelength_uncertainty_nm = 0.5
+vertical_input_wavelength_nm = 522.5
+vertical_input_wavelength_uncertainty_nm = 0.5
+wavelength_measurement_instrument = "Avesta ASP100"
+
+# Fixed parameters of the reported homogeneous-propagation control.
+# These are numerical inputs, distinct from the measured source centers above.
+[holography.column_wavelength_control]
+common_wavelength_nm = 520.0
+horizontal_wavelength_nm = 518.2
+vertical_wavelength_nm = 522.0
+
+[direct_pom]
+wavelength_nominal_nm = 520.0
+# The retained direct-POM series uses horizontal input and the same source as
+# the horizontal-input column of the primary full-Jones measurement.
+wavelength_center_nm = 518.2
+wavelength_uncertainty_nm = 0.5
+wavelength_measurement_instrument = "Avesta ASP100"
+input_polarization = "horizontal"
+exposure_times_ms = [12, 42]
+selected_frame_numbers = [45, 46, 47, 48, 49]
+display_frame_numbers = [49, 48, 47, 46, 45]
+component_pixel_size_um = 0.1363
+component_pixel_size_status = "confirmed from calibration-slide measurements"
+component_pixel_size_uncertainty_um = 0.0063
+component_pixel_size_provenance = "same calibration-slide calibration as holography"
+translation_reading_per_frame_um = 10.0
+beamsplitter_vertical_to_horizontal_amplitude_ratio = 1.4142135623730951
+encoded_shape_yx = [2048, 2448]
+encoded_dtype = "uint8"
+encoded_mode = "8-bit grayscale PNG"
+analyzer_quadrant_shape_yx = [1024, 1224]
+analyzer_quadrants = [
+  "top-left:I0",
+  "top-right:I135",
+  "bottom-left:I45",
+  "bottom-right:I90",
+]
+nominal_objective_magnification = 50.0
+nominal_objective_na = 0.55
+camera = "FLIR BFS-U3-51S5P-C division-of-focal-plane polarization camera"
+environment_file = "Environment.png"
+ground_file_glob = "Ground (*).png"
+
+[direct_pom.notes]
+frame_zero = "objective focus near the external cell surface closest to the objective"
+translation = "the cell was moved one 10-um micrometer reading toward the objective per frame"
+laser_stability = "not independently guaranteed"
+late_series_shift = "the toron was accidentally shifted after the states retained here"
+nearby_structure = "a neighboring finger left weak vertical structure on the left at large defocus"
+
+[sample]
+cell_supplier = "E.H.C. (Japan)"
+alignment = "homeotropic"
+host = "5CB"
+host_supplier = "Sigma-Aldrich"
+host_cas = "40817-08-1"
+chiral_dopant = "S811"
+chiral_dopant_supplier = "HCCH (China)"
+chiral_dopant_cas = "87321-20-8"
+chiral_dopant_concentration_wt_percent = 0.27
+chiral_dopant_concentration_provenance = "laboratory records"
+cell_fill_date = "2025-04-11"
+cell_fill_date_provenance = "laboratory records"
+applied_voltage_V = 0.0
+cell_thickness_um = 27.4
+cell_thickness_uncertainty_um = 1.3
+cell_thickness_measurement_method = "interferometry"
+grandjean_cano_pitch_um = 29.0
+grandjean_cano_pitch_uncertainty_um = 3.0
+grandjean_cano_pitch_measurement_method = "repeated Grandjean--Cano measurements using an E.H.C. KCRS-05 wedge cell with the manufacturer-specified +8% spacer-thickness allowance"
+grandjean_cano_pitch_uncertainty_definition = "standard deviation across repeated measurements"

@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+force=false
+if [[ ${1:-} == "--force" ]]; then
+  force=true
+  shift
+fi
+if [[ $# -ne 1 ]]; then
+  printf 'usage: %s [--force] RELEASE_DIR\n' "$0" >&2
+  exit 2
+fi
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+release_dir=$1
+source_archive="$release_dir/fourfold-source-data.zip"
+derived_archive="$release_dir/fourfold-derived-data.zip"
+for archive in "$source_archive" "$derived_archive"; do
+  if [[ ! -f "$archive" ]]; then
+    printf 'missing release archive: %s\n' "$archive" >&2
+    exit 2
+  fi
+done
+
+python3 "$root/scripts/release_manifest" verify "$release_dir"
+
+if [[ "$force" == false ]]; then
+  existing_source=""
+  existing_derived=""
+  if [[ -d "$root/data_src" ]]; then
+    existing_source=$(find "$root/data_src" -mindepth 2 -type f -print -quit)
+  fi
+  if [[ -d "$root/data" ]]; then
+    existing_derived=$(
+      find "$root/data" -type f ! -path "$root/data/README.md" -print -quit
+    )
+  fi
+  if [[ -n "$existing_source" || -n "$existing_derived" ]]; then
+    printf 'data_src/ or data/ already contains payload files; no files were changed\n' >&2
+    printf 'rerun with --force to replace both data trees\n' >&2
+    exit 2
+  fi
+fi
+
+force_args=()
+if [[ "$force" == true ]]; then
+  force_args=(--force)
+fi
+"$root/scripts/unpack_data_src" "${force_args[@]}" "$source_archive"
+"$root/scripts/unpack_data" "${force_args[@]}" "$derived_archive"
+printf 'Both release archives were unpacked successfully.\n'

@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+force=false
+if [[ ${1:-} == "--force" ]]; then
+  force=true
+  shift
+fi
+if [[ $# -ne 1 ]]; then
+  printf 'usage: %s [--force] DERIVED_DATA.zip\n' "$0" >&2
+  exit 2
+fi
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+archive=$1
+if [[ ! -f "$archive" ]]; then
+  printf 'derived-data archive does not exist: %s\n' "$archive" >&2
+  exit 2
+fi
+if ! command -v unzip >/dev/null 2>&1; then
+  printf 'unpack_data: required command not found: unzip\n' >&2
+  exit 127
+fi
+invalid_entry=$(
+  unzip -Z1 "$archive" |
+    awk 'index($0, "data/") != 1 && index($0, "figs/") != 1 && index($0, "data_src/directors/") != 1 &&
+      $0 != "data_src/directors.toml" && $0 != "data_src/directors.sha256" &&
+      $0 != "LICENSE" { print; exit }'
+)
+if [[ -n "$invalid_entry" ]]; then
+  printf 'archive contains an unexpected entry: %s\n' "$invalid_entry" >&2
+  exit 2
+fi
+unzip -tq "$archive" >/dev/null
+
+existing_payload=""
+if [[ -d "$root/data" ]]; then
+  existing_payload=$(
+    find "$root/data" -type f ! -path "$root/data/README.md" -print -quit
+  )
+fi
+if [[ -z "$existing_payload" && -d "$root/data_src/directors" ]]; then
+  existing_payload=$(find "$root/data_src/directors" -type f -print -quit)
+fi
+if [[ -n "$existing_payload" && "$force" == false ]]; then
+  printf 'data/ is not empty; rerun with --force to replace derived files\n' >&2
+  exit 2
+fi
+if [[ "$force" == true ]]; then
+  rm -rf \
+    "$root/data/experimental" \
+    "$root/data/simulated" \
+    "$root/data/analysis"
+fi
+unzip -oq "$archive" -d "$root"
+"$root/scripts/check_directors"
+printf 'Derived-data cache unpacked under %s/data\n' "$root"

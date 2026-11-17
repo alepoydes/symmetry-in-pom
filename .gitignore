@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+build/
+figs/
+*.zip
+data/*
+!data/README.md
+data_src/*
+!data_src/*.toml
+!data_src/*.sha256
+!data_src/README.md

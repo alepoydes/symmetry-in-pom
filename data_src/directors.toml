@@ -1,0 +1,39 @@
+schema_version = "symmetry-in-pom.director-source.v1"
+
+[common]
+grid_shape_xyz = [200, 200, 51]
+node_spacing_um = 0.548
+cell_thickness_um = 27.4
+lateral_boundary = "fixed_orientation"
+lateral_direction = [0.0, 0.0, 1.0]
+substrate_boundary = "SoftAxis"
+substrate_strength = 5.48e-6
+substrate_strength_si_unit = "J m^-2"
+integrator = "cayley-fixed"
+simulation_code = "lcsim"
+simulation_code_version = "0.1.12"
+simulation_code_revision = "4ba0759ac6889d903309f559d7a15201a0cafc21"
+simulation_code_provenance = "supplied run record; not embedded in snapshot_manifest"
+initialization = "analytical toron ansatz, followed by relaxation in lcsim"
+ansatz_reference_doi = "10.3390/sym14122476"
+rotational_viscosity_mPa_s = 203.6
+K1_pN = 6.4
+K2_pN = 3.0
+K3_pN = 9.1
+q0_um_inv = -0.2284794657156213
+parameter_selection = "manual adjustment in lcsim by comparing TopoVec optical renders with experiment; director held fixed in the local-Jones and marching-wave comparison"
+parameter_selection_provenance = "no systematic optimization or parameter uncertainty analysis"
+
+[primary]
+file = "directors/toron_27um_5cb_soft.npz"
+bottom_substrate_direction = [0.0, 0.0, 1.0]
+top_substrate_direction = [0.0, 0.0, 1.0]
+relaxation_simulated_time_s = 1000.0
+relaxation_time_provenance = "supplied run record; not embedded in snapshot_manifest"
+
+[inclined_positive_control]
+file = "directors/toron_27um_5cb_soft_inclined_0.03.npz"
+bottom_substrate_direction = [0.03, 0.0, 1.0]
+top_substrate_direction = [0.03, 0.0, 1.0]
+direction_normalization = "performed by the SoftAxis boundary condition"
+relaxation_time_provenance = "not separately recorded in the source archive"

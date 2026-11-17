@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+force=false
+if [[ ${1:-} == "--force" ]]; then
+  force=true
+  shift
+fi
+if [[ $# -gt 1 ]]; then
+  printf 'usage: %s [--force] [OUTPUT_DIR]\n' "$0" >&2
+  exit 2
+fi
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+output_dir=${1:-"$root/build/release"}
+if [[ "$output_dir" != /* ]]; then
+  output_dir="$root/$output_dir"
+fi
+source_archive="$output_dir/fourfold-source-data.zip"
+derived_archive="$output_dir/fourfold-derived-data.zip"
+
+if [[ "$force" == false ]]; then
+  conflicts=()
+  [[ ! -e "$source_archive" ]] || conflicts+=("$source_archive")
+  [[ ! -e "$derived_archive" ]] || conflicts+=("$derived_archive")
+  [[ ! -e "$output_dir/release-manifest.json" ]] || conflicts+=("$output_dir/release-manifest.json")
+  [[ ! -e "$output_dir/SHA256SUMS" ]] || conflicts+=("$output_dir/SHA256SUMS")
+  if [[ ${#conflicts[@]} -gt 0 ]]; then
+    printf 'release archives already exist; no files were changed:\n' >&2
+    printf '  %s\n' "${conflicts[@]}" >&2
+    printf 'rerun with --force to replace both archives\n' >&2
+    exit 2
+  fi
+fi
+
+mkdir -p "$output_dir"
+temporary_dir=$(mktemp -d "$output_dir/.fourfold-release.XXXXXX")
+cleanup() {
+  rm -rf -- "$temporary_dir"
+}
+trap cleanup EXIT
+"$root/scripts/pack_data_src" "$temporary_dir/fourfold-source-data.zip"
+"$root/scripts/pack_data" "$temporary_dir/fourfold-derived-data.zip"
+python3 "$root/scripts/release_manifest" create "$temporary_dir"
+mv -f \
+  "$temporary_dir/fourfold-source-data.zip" \
+  "$temporary_dir/fourfold-derived-data.zip" \
+  "$temporary_dir/release-manifest.json" \
+  "$temporary_dir/SHA256SUMS" \
+  "$output_dir/"
+trap - EXIT
+rmdir "$temporary_dir"
+
+printf 'Prepared local release assets:\n'
+du -h "$source_archive" "$derived_archive" "$output_dir/release-manifest.json" "$output_dir/SHA256SUMS"

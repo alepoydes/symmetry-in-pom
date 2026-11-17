@@ -1,0 +1,195 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+script_path="$root/scripts/${BASH_SOURCE[0]##*/}"
+force=false
+positional=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --force)
+      force=true
+      ;;
+    -*)
+      printf 'usage: %s [--force] [INPUT_DIR [OUTPUT_DIR]]\n' "${0##*/}" >&2
+      exit 2
+      ;;
+    *)
+      positional+=("$1")
+      ;;
+  esac
+  shift
+done
+if [[ ${#positional[@]} -gt 2 ]]; then
+  printf 'usage: %s [--force] [INPUT_DIR [OUTPUT_DIR]]\n' "${0##*/}" >&2
+  exit 2
+fi
+input_dir=${positional[0]:-"$root/build/figures/raw"}
+output_dir=${positional[1]:-"$root/figs"}
+
+if [[ "$input_dir" != /* ]]; then
+  input_dir="$root/$input_dir"
+fi
+if [[ "$output_dir" != /* ]]; then
+  output_dir="$root/$output_dir"
+fi
+
+for command_name in gs pdfinfo; do
+  if ! command -v "$command_name" >/dev/null 2>&1; then
+    printf 'publish_figures: required command not found: %s\n' \
+      "$command_name" >&2
+    exit 127
+  fi
+done
+
+mkdir -p "$output_dir"
+mapfile -t publication_names < <(
+  ARTICLE_FIGURE_DIR="$input_dir" \
+    uv run python "$root/code/scripts/check_publication_figures.py" --list
+)
+inputs=()
+for name in "${publication_names[@]}"; do
+  inputs+=("$input_dir/$name")
+done
+
+pdf_pages() {
+  pdfinfo "$1" 2>/dev/null |
+    awk '$1 == "Pages:" { print $2; exit }' || true
+}
+
+pdf_geometry() {
+  pdfinfo "$1" 2>/dev/null |
+    awk '$1 == "Page" && $2 == "size:" {
+      printf "%.6f %.6f", $3, $5
+      exit
+    }' || true
+}
+
+same_geometry() {
+  local first_geometry second_geometry
+  first_geometry=$(pdf_geometry "$1")
+  second_geometry=$(pdf_geometry "$2")
+  [[ -n "$first_geometry" && -n "$second_geometry" ]] || return 1
+  awk -v first="$first_geometry" -v second="$second_geometry" '
+    BEGIN {
+      split(first, a)
+      split(second, b)
+      dx = a[1] - b[1]
+      dy = a[2] - b[2]
+      if (dx < 0) dx = -dx
+      if (dy < 0) dy = -dy
+      exit !(dx <= 0.02 && dy <= 0.02)
+    }
+  '
+}
+
+temporary=""
+cleanup() {
+  if [[ -n "$temporary" ]]; then
+    rm -f -- "$temporary"
+  fi
+}
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+written=0
+skipped=0
+raw_bytes=0
+published_bytes=0
+
+for input in "${inputs[@]}"; do
+  name=${input##*/}
+  output="$output_dir/$name"
+  input_pages=$(pdf_pages "$input")
+  input_geometry=$(pdf_geometry "$input")
+  if [[ -z "$input_pages" || -z "$input_geometry" ]]; then
+    printf 'publish_figures: invalid input PDF: %s\n' "$input" >&2
+    exit 1
+  fi
+
+  if [[ "$force" == false &&
+        -s "$output" &&
+        "$output" -nt "$input" &&
+        "$output" -nt "$script_path" ]]; then
+    output_pages=$(pdf_pages "$output")
+    if [[ "$output_pages" == "$input_pages" ]] &&
+       same_geometry "$input" "$output"; then
+      printf '[skip]  figs/%s is up to date\n' "$name"
+      skipped=$((skipped + 1))
+      continue
+    fi
+  fi
+
+  printf '[write] figs/%s\n' "$name"
+  temporary=$(mktemp "$output_dir/.${name}.XXXXXX.pdf")
+  gs \
+    -q \
+    -dBATCH \
+    -dNOPAUSE \
+    -dSAFER \
+    -sDEVICE=pdfwrite \
+    -dCompatibilityLevel=1.5 \
+    -dPDFSETTINGS=/printer \
+    -dAutoRotatePages=/None \
+    -dDetectDuplicateImages=true \
+    -dCompressFonts=true \
+    -dSubsetFonts=true \
+    -dAutoFilterColorImages=false \
+    -dColorImageFilter=/DCTEncode \
+    -dAutoFilterGrayImages=false \
+    -dGrayImageFilter=/DCTEncode \
+    -dJPEGQ=90 \
+    -dDownsampleColorImages=true \
+    -dColorImageDownsampleType=/Bicubic \
+    -dColorImageDownsampleThreshold=1.0 \
+    -dColorImageResolution=350 \
+    -dDownsampleGrayImages=true \
+    -dGrayImageDownsampleType=/Bicubic \
+    -dGrayImageDownsampleThreshold=1.0 \
+    -dGrayImageResolution=350 \
+    -dDownsampleMonoImages=true \
+    -dMonoImageDownsampleType=/Subsample \
+    -dMonoImageDownsampleThreshold=1.0 \
+    -dMonoImageResolution=600 \
+    -sOutputFile="$temporary" \
+    "$input"
+
+  output_pages=$(pdf_pages "$temporary")
+  if [[ ! -s "$temporary" || "$output_pages" != "$input_pages" ]] ||
+     ! same_geometry "$input" "$temporary"; then
+    printf 'publish_figures: optimized PDF failed validation: %s\n' \
+      "$input" >&2
+    exit 1
+  fi
+
+  input_size=$(stat -c '%s' "$input")
+  output_size=$(stat -c '%s' "$temporary")
+  if (( output_size >= input_size )); then
+    cp -- "$input" "$temporary"
+    output_size=$input_size
+    mode="lossless master (already smaller)"
+  else
+    mode="print-quality PDF"
+  fi
+  mv -f -- "$temporary" "$output"
+  temporary=""
+  read -r page_width page_height <<< "$input_geometry"
+  printf '        %s -> %s bytes; %.3f x %.3f pt; %s\n' \
+    "$input_size" "$output_size" "$page_width" "$page_height" "$mode"
+  written=$((written + 1))
+  raw_bytes=$((raw_bytes + input_size))
+  published_bytes=$((published_bytes + output_size))
+done
+
+printf 'Published %s figure PDFs (%s written, %s current)' \
+  "${#inputs[@]}" "$written" "$skipped"
+if (( written > 0 )); then
+  printf '; written subset: %s -> %s bytes' "$raw_bytes" "$published_bytes"
+fi
+printf '.\n'
+
+ARTICLE_FIGURE_DIR="$output_dir" \
+  uv run python "$root/code/scripts/check_publication_figures.py" \
+    --prune-unreferenced

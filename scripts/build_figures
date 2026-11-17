@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+output_dir="$root/build/figures/raw"
+force=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --output-dir)
+      [[ $# -ge 2 ]] || {
+        printf 'usage: %s [--output-dir DIRECTORY] [--force]\n' "${0##*/}" >&2
+        exit 2
+      }
+      output_dir=$2
+      shift 2
+      ;;
+    --force)
+      force=true
+      shift
+      ;;
+    *)
+      printf 'usage: %s [--output-dir DIRECTORY] [--force]\n' "${0##*/}" >&2
+      exit 2
+      ;;
+  esac
+done
+if [[ "$output_dir" != /* ]]; then
+  output_dir="$root/$output_dir"
+fi
+
+cd "$root"
+if [[ "$force" == false ]]; then
+  shopt -s nullglob
+  existing_outputs=("$output_dir"/*.pdf)
+  shopt -u nullglob
+  if [[ ${#existing_outputs[@]} -gt 0 ]]; then
+    printf 'Existing figure masters would be overwritten; no files were changed:\n' >&2
+    for path in "${existing_outputs[@]}"; do
+      printf '  %s\n' "${path#"$root/"}" >&2
+    done
+    printf '\nRerun with --force, or use make figures FORCE=1.\n' >&2
+    exit 2
+  fi
+fi
+mkdir -p "$output_dir" build
+export ARTICLE_FIGURE_DIR="$output_dir"
+export MPLCONFIGDIR="$root/build/.matplotlib"
+mkdir -p "$MPLCONFIGDIR"
+
+printf 'Building lossless figure masters in %s\n' "$ARTICLE_FIGURE_DIR"
+
+run=(uv run)
+force_args=()
+if [[ "$force" == true ]]; then
+  force_args=(--force)
+fi
+
+"${run[@]}" python code/scripts/build_focus_figures.py "${force_args[@]}"
+for wavelength in 450 520 660; do
+  "${run[@]}" python code/scripts/build_optical_figures.py \
+    --wavelength "$wavelength" "${force_args[@]}"
+done
+"${run[@]}" python code/scripts/build_optical_figures.py \
+  --experimental-modes "${force_args[@]}"
+"${run[@]}" python code/scripts/build_optical_figures.py --tilted "${force_args[@]}"
+"${run[@]}" python code/scripts/render_shifted_toron_ensemble_figures.py \
+  "${force_args[@]}"
+"${run[@]}" python code/scripts/analyze_axisymmetric_jones_evolution.py \
+  --mode plot --publication-figures-only "${force_args[@]}"
+for figure in 1 2 3 5 director-views supplement; do
+  "${run[@]}" python code/scripts/build_letter_figures.py \
+    --figure "$figure" "${force_args[@]}"
+done
+
+"${run[@]}" python code/scripts/check_publication_figures.py --prune-unreferenced

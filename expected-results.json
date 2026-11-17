@@ -1,0 +1,139 @@
+[
+  {
+    "name": "experiment V2",
+    "file": "data/analysis/main_symmetry_520_soft/report.json",
+    "keys": [
+      "model_integrated_visibility",
+      "experiment",
+      "V2"
+    ],
+    "value": 0.2512,
+    "atol": 5e-05
+  },
+  {
+    "name": "experiment V4",
+    "file": "data/analysis/main_symmetry_520_soft/report.json",
+    "keys": [
+      "model_integrated_visibility",
+      "experiment",
+      "V4"
+    ],
+    "value": 0.4051,
+    "atol": 5e-05
+  },
+  {
+    "name": "axisymmetric_experiment V2",
+    "file": "data/analysis/main_symmetry_520_soft/report.json",
+    "keys": [
+      "model_integrated_visibility",
+      "axisymmetric_experiment",
+      "V2"
+    ],
+    "value": 0.253,
+    "atol": 5e-05
+  },
+  {
+    "name": "axisymmetric_experiment V4",
+    "file": "data/analysis/main_symmetry_520_soft/report.json",
+    "keys": [
+      "model_integrated_visibility",
+      "axisymmetric_experiment",
+      "V4"
+    ],
+    "value": 0.4116,
+    "atol": 5e-05
+  },
+  {
+    "name": "marching V2",
+    "file": "data/analysis/main_symmetry_520_soft/report.json",
+    "keys": [
+      "model_integrated_visibility",
+      "marching",
+      "V2"
+    ],
+    "value": 0.3387,
+    "atol": 5e-05
+  },
+  {
+    "name": "marching V4",
+    "file": "data/analysis/main_symmetry_520_soft/report.json",
+    "keys": [
+      "model_integrated_visibility",
+      "marching",
+      "V4"
+    ],
+    "value": 0.4802,
+    "atol": 5e-05
+  },
+  {
+    "name": "local_jones V2",
+    "file": "data/analysis/main_symmetry_520_soft/report.json",
+    "keys": [
+      "model_integrated_visibility",
+      "local_jones",
+      "V2"
+    ],
+    "value": 0.00472,
+    "atol": 5e-06
+  },
+  {
+    "name": "local_jones V4",
+    "file": "data/analysis/main_symmetry_520_soft/report.json",
+    "keys": [
+      "model_integrated_visibility",
+      "local_jones",
+      "V4"
+    ],
+    "value": 0.4364,
+    "atol": 5e-05
+  },
+  {
+    "name": "Covariance residual",
+    "file": "data/analysis/main_symmetry_520_soft/report.json",
+    "keys": [
+      "axisymmetric_projection",
+      "integrated_relative_jones_residual"
+    ],
+    "value": 0.111,
+    "atol": 0.0005
+  },
+  {
+    "name": "Order-zero crossed power fraction",
+    "file": "data/analysis/main_symmetry_520_soft/report.json",
+    "keys": [
+      "crossed_H0_order_partition",
+      "order_zero_fraction"
+    ],
+    "value": 0.578,
+    "atol": 0.0005
+  },
+  {
+    "name": "Phase-step b change (%)",
+    "file": "data/analysis/phase_step_convergence_520_soft/report.json",
+    "keys": [
+      "absolute_percent_change",
+      "normalized_b_amplitude"
+    ],
+    "value": 0.246,
+    "atol": 0.0005
+  },
+  {
+    "name": "Phase-step H2 change (%)",
+    "file": "data/analysis/phase_step_convergence_520_soft/report.json",
+    "keys": [
+      "absolute_percent_change",
+      "integrated_crossed_twofold_amplitude"
+    ],
+    "value": 3.09,
+    "atol": 0.005
+  },
+  {
+    "name": "Aligned Jones discrepancy (%)",
+    "file": "data/analysis/phase_step_convergence_520_soft/report.json",
+    "keys": [
+      "aligned_jones_rms_percent"
+    ],
+    "value": 0.677,
+    "atol": 0.0005
+  }
+]

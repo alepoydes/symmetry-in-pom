@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+force=false
+group=experimental
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --force) force=true ;;
+    --directors) group=directors ;;
+    *) break ;;
+  esac
+  shift
+done
+if [[ $# -ne 0 ]]; then
+  printf 'usage: %s [--force] [--directors]\n' "${0##*/}" >&2
+  exit 2
+fi
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+source_root="$root/data_src"
+destination="$source_root/checksums.sha256"
+if [[ "$group" == directors ]]; then
+  destination="$source_root/directors.sha256"
+fi
+if [[ -e "$destination" && "$force" == false ]]; then
+  printf 'output already exists: %s\nrerun with --force to replace it\n' \
+    "$destination" >&2
+  exit 2
+fi
+
+temporary=$(mktemp "$source_root/.checksums.sha256.XXXXXX")
+cleanup() {
+  rm -f -- "$temporary"
+}
+trap cleanup EXIT
+(
+  cd "$root"
+  if [[ "$group" == directors ]]; then
+    paths=(data_src/directors data_src/directors.toml)
+  else
+    paths=(data_src/holography data_src/direct_pom data_src/experiment.toml data_src/README.md)
+  fi
+  find "${paths[@]}" -type f \
+    -print0 |
+    sort -z |
+    xargs -0 sha256sum >"$temporary"
+)
+mv -f -- "$temporary" "$destination"
+temporary=""
+trap - EXIT
+printf 'Wrote %s\n' "$destination"

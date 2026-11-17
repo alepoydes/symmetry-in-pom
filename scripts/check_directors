@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+cd "$root"
+sha256sum --check --quiet data_src/directors.sha256
+uv run python code/scripts/validate_source_data.py --directors
